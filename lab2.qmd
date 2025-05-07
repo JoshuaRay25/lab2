@@ -1,0 +1,263 @@
+---
+title: "lab2"
+format:
+  html:
+    self-contained: true
+---
+
+```{r}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+library(tidyverse)
+library(lubridate)
+library(forcats)
+```
+
+#Question1
+
+```{r}
+trees <- read_csv("data/tree_dat.csv", show_col_types = FALSE)
+glimpse(trees)
+```
+
+#The tibble has r nrow(trees) rows and r ncol(trees) columns:treeID (int), standID (int), stand (chr), year (int; 1897–2007),species (chr; 15 codes), age (dbl), inc (dbl mm), rad_ib (dbl mm).
+
+#Question 2 #There are r stand1_count records from stand 1.
+
+```{r}
+stand1_count <- trees %>%
+  filter(standID == 1) %>%
+  nrow()
+stand1_count
+```
+
+#Question 3
+
+```{r}
+abba_pist_count <- trees %>%
+  filter(species %in% c("ABBA","PIST")) %>%
+  count(species)
+abba_pist_count
+```
+
+#2 records
+
+#Question 4
+
+```{r}
+last_year <- max(trees$year)
+over200_last <- trees %>%
+  filter(year == last_year, age > 200) %>%
+  nrow()
+over200_last
+```
+# 7 trees
+
+#Question 5
+```{r}
+oldest_tree <- trees %>%
+  slice_max(age, n = 1)
+oldest_tree
+```
+# 269 years old
+
+#Question 6
+```{r}
+old5_2001 <- trees %>%
+  filter(year == 2001) %>%
+  slice_max(age, n = 5)
+old5_2001
+```
+#Question 7
+```{r}
+n_2002      <- trees %>% filter(year==2002) %>% nrow()
+sample30_2002 <- trees %>%
+  filter(year == 2002) %>%
+  slice_sample(prop = 0.30) %>%
+  nrow()
+sample30_2002
+```
+# 687
+
+#Question 8
+```{r}
+top3_stand5_2007 <- trees %>%
+  filter(standID == 5, year == 2007) %>%
+  arrange(desc(rad_ib)) %>%
+  slice_head(n = 3) %>%
+  pull(treeID)
+top3_stand5_2007
+```
+# 128, 157, 135
+
+#Question 9
+```{r}
+small3_stand3_2007 <- trees %>%
+  filter(standID == 3, year == 2007) %>%
+  select(treeID, stand, year, rad_ib) %>%
+  slice_min(rad_ib, n = 3)
+
+small3_stand3_2007
+```
+#Question 10
+```{r}
+trees_no_stand <- trees %>%
+  select(-stand)
+glimpse(trees_no_stand)
+```
+#Question 11
+```{r}
+id_cols <- trees %>%
+  select(contains("ID"))
+glimpse(id_cols)
+```
+#names is one of them
+
+#Question 12
+```{r}
+id_or_stand <- trees %>%
+  select(matches("ID|stand"))
+glimpse(id_or_stand)
+```
+
+#Question 13
+```{r}
+trees_renamed <- trees %>%
+  rename(
+    rad_ib_mm = rad_ib,
+    inc_mm    = inc
+  )
+glimpse(trees_renamed)
+```
+
+#Question 14
+```{r}
+trees_ba <- trees_renamed %>%
+  mutate(
+    DBH_cm = (rad_ib_mm * 2) / 10,
+    BA_m2  = 0.00007854 * DBH_cm^2
+  )
+
+potr_2007_mean_ba <- trees_ba %>%
+  filter(species == "POTR", year == 2007) %>%
+  summarise(mean_BA = mean(BA_m2, na.rm = TRUE))
+potr_2007_mean_ba
+```
+# 0.03696619	
+
+#Question 15
+```{r}
+trees_est <- trees %>%
+  mutate(established = age > 5) %>%
+  count(established)
+trees_est
+```
+
+# FALSE	8883			
+# TRUE	122503	
+
+#Question 16
+```{r}
+trees_class <- trees_ba %>%
+  mutate(
+    DBH_class = case_when(
+      DBH_cm <=  2.5 ~ "seedling",
+      DBH_cm <= 10   ~ "sapling",
+      DBH_cm <= 30   ~ "pole",
+      TRUE           ~ "sawlog"
+    )
+  ) %>%
+  filter(year == 2007) %>%
+  count(DBH_class)
+trees_class
+```
+# pole	1963			
+# sapling	252			
+# sawlog	76	
+
+#Question 17
+```{r}
+dbh_stats_2007 <- trees_ba %>%
+  filter(year == 2007) %>%
+  summarise(
+    mean_DBH = mean(DBH_cm, na.rm = TRUE),
+    sd_DBH   = sd(DBH_cm,   na.rm = TRUE)
+  )
+dbh_stats_2007
+```
+# The mean is 16.09351cm and the standard deviation is 6.138643cm
+
+#Question 18
+```{r}
+oldest_species_2003 <- trees %>%
+  filter(year == 2003) %>%
+  group_by(species) %>%
+  summarise(mean_age = mean(age, na.rm = TRUE)) %>%
+  arrange(desc(mean_age)) %>%
+  slice_head(n = 3)
+oldest_species_2003
+```
+# species
+#<chr>
+#mean_age
+#<dbl>
+#THOC	126.63830			
+#FRNI	83.08333			
+#PIST	73.28571	
+
+# Question 19
+```{r}
+year_summary <- trees %>%
+  summarise(
+    unique_years   = n_distinct(year),
+    first_year     = min(year),
+    last_year      = max(year)
+  )
+year_summary
+```
+# unique_years
+#<int>
+#first_year
+#<dbl>
+#last_year
+#<dbl>
+#111	1897	2007	
+
+#Question 20
+
+```{r}
+stand_years <- trees %>%
+  group_by(stand) %>%
+  summarise(n_years = n_distinct(year)) 
+
+max_years <- max(stand_years$n_years)
+
+stands_longest <- stand_years %>%
+  filter(n_years == max_years)
+stands_longest
+```
+# Final Question 
+
+```{r}
+growth_rates <- trees %>%
+  arrange(treeID, year) %>%
+  group_by(treeID, species) %>%
+  mutate(
+    yr_growth = inc - lag(inc)
+  ) %>%
+  filter(!is.na(yr_growth))
+
+species_stats <- growth_rates %>%
+  group_by(species) %>%
+  summarise(
+    mean_growth = mean(yr_growth, na.rm = TRUE),
+    sd_growth   = sd(yr_growth,   na.rm = TRUE)
+  )
+
+fastest <- species_stats %>% arrange(desc(mean_growth)) %>% slice_head(n = 3)
+slowest <- species_stats %>% arrange(mean_growth)          %>% slice_head(n = 3)
+
+fastest
+slowest
+```
+
+
